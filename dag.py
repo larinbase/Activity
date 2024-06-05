@@ -5,23 +5,25 @@ from airflow.operators.python_operator import PythonOperator
 import clickhouse_connect
 import pandas as pd
 
+import os
+
 # Ваша функция для выполнения
-def my_python_function():
+def send_to_clickhouse():
     client = clickhouse_connect.get_client(
-        host='ulejq6zzrh.europe-west4.gcp.clickhouse.cloud',
+        host='j7l1ejvruf.europe-west4.gcp.clickhouse.cloud',
         user='default',
-        password='A0Hd1LXV.Vgr5',
+        password='ToW~Rk02PD8rk',
         secure=True
     )
-    print("Result:", client.query("select * from \"fitnes-stats\"").result_set)
+    print("Result:", client.query("select * from \"fitness_stats\"").result_set)
 
-    csv_file_path = 'Activity.csv'
+    csv_file_path = '/root/airflow/activity-transform.csv'
     df = pd.read_csv(csv_file_path)
     df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%Y')
     # df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')
     print(df['Date'])
 
-    table_name = 'fitnes-stats'
+    table_name = 'fitness_stats'
 
     values = df.values
 
@@ -31,7 +33,7 @@ def my_python_function():
     client.insert(table_name, values, columns)
 
     print("Data inserted successfully.")
-    print("Result:", client.query("select * from \"fitnes-stats\"").result_set)
+    print("Result:", client.query("select * from \"fitness_stats\"").result_set)
     print("Running my Python function!")
 
 # Настройки DAG
@@ -45,17 +47,16 @@ default_args = {
 
 # Определение DAG
 dag = DAG(
-    #'minute_job',
-    #default_args=default_args,
-    #description='Run job every minute',
-    #schedule_interval='@hourly',  # Указываем частоту выполнения
-    'tutorial', catchup=False, default_args=default_args
+    'send_to_clickhouse',
+    default_args=default_args,
+    description='Run job every hour',
+    schedule_interval='@hourly'  # Указываем частоту выполнения
 )
 
 # Создание задачи для выполнения вашей функции
 run_this_task = PythonOperator(
-    task_id='run_my_python_function',
-    python_callable=my_python_function,
+    task_id='run_send_to_clickhouse',
+    python_callable=send_to_clickhouse,
     dag=dag,
 )
 
